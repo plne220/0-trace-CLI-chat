@@ -22,7 +22,8 @@ upcoming features:
 
 how to use:
 serverside - 'python ttc-cli.py server'
-           -  set password for clients
+then - set password for clients
+
 clientside - 'python3 secure_cli.py client (ip addr of server)'
 in chat - m=msg f=file q=quit
 
