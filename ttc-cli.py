@@ -1,22 +1,12 @@
-import socket, ssl, threading, struct, hashlib, os, sys, subprocess, pathlib, urllib.request, time
-
-PORT = 4444
-CERT = "server.crt"
+rt"
 KEY = "server.key"
-SALT = b"simple_static_salt"
 
-clients = []
+SALT = "6d477e7f16fc7141bbcda0c2950da171"
+PASSWORD_HASH = "daae92a9a7001e3bb73a8a56c9f868837f9e6f0631cb3a645dea85d494740063" #dont bother cracking ts 
 
-LOGO = r"""
-      
-                                                                                            +
-                                  -                 +           .:                          +
-                              -=:%@@@@-         +=:%@@@@-    *:=@@@@%                       +
-                              *%%@@@@#.         *%%@@@@#.    %%@@@@%+      =                +
-                   .  :@#+=.            :  -@*+=      .         .      *==@@@@@.            +
-                   :@@@@@@#-            .@@@@@@#-     -  #@++-         #*#@@@@*             +
-                   .  :***:        .-   :  -***.      *@@@@@%* .  .@+-:                     +
-                                %-=@@@@%              .  **+-  :@@@@@@%+                    +
+TAILSCALE_ONLY = True
+
+SERVER_LOGO = r"""
                     :%:        .%#%@@@@*    ..  %%+=.          :. =##%-                     +
                    *@@@.                     @@@@@@#=     .=             :                  +
          :@-     .@@@@@@@@@@@@#                 **#:   #:-@@@@@:     .*.#@@@@*              +
@@ -76,207 +66,245 @@ LOGO = r"""
           #%      +@  @#*#@=  @+   =***   %+  %*   %= +%. @  :@:  .+##=  :@#***:            +
           :@=    :@=  @:  :@. :@-    -@  *%...:@=  %=  .%+@  :@:      ## :@:                +
             :*##*-    *:   =+   .+###*= -*      #. +-    =#  .#. -*##*:  .#####*            +
-                                                                                            +
-                                                                                            +
-                                                                                            +
+
 """
 
-def hash_pw(user, pw):
-    return hashlib.sha256(SALT + user.encode() + pw.encode()).digest()
+CLIENT_LOGO = r"""
+                    :%:        .%#%@@@@*    ..  %%+=.          :. =##%-                     +
+                   *@@@.                     @@@@@@#=     .=             :                  +
+         :@-     .@@@@@@@@@@@@#                 **#:   #:-@@@@@:     .*.#@@@@*              +
+          *@@= .*@@@@@@@@@@@@@@@+       *              %%@@@@@%      -@%@@@@@-              +
+          =@@@@@@@@@@@@@@@@@@*=.    ++-@@@@@-                                               +
+          %@@@@@@@@@@@@@@@@@@@%*    *#%@@@@#. .. .%%++.      :  #@*+:                       +
+         +@%=--+%@@@@@@@@@@@@@+                @@@@@@#=      *@@@@@#+.  =  %@%#+            +
+                   %#+++==%.                  .. :*+*-       : .++*=.   #@@@@@%*.           +
+                          .   -  +@**=       -.     .  =@#*=.              ----             +
+                              -@@@@@@*.  ==:*@@@@=   @@@@@@#:     .: .@@#*:                 +
+                              :  -+++.   =%%@@@@%:  :  :*++.       @@@@@@#=                 +
+                           ..                  .            **..      =-=.                  +
+                        *.-@@@@*      .                  @%@@@@@%.                          +
+                        @@@@@@@*  =  @@@@#   .= -@@@@-  :=:+@@@#:       .%+::               +
+                                  +@@@@@%*    @@@@@@*-                @@@@@@%=              +
+                                     :...        :.:                 :..-%%%-               +
+                                                                                            +
+                                                                                            +
+                                                                                            +
+          ##**+.  .**#*.    ++   *: .+***: *#%#*+   #***.  **   -#   =- *:  =#*#:           +
+         .%.  .%:-%    @-   #*@. #- %    **  %=     @.  % =#*+  ++%. +- %: %.               +
+         .%.   +=*=    *+   #-.%.#--*    -%  %=     @*+#: %::%  +=.%:+- %:-*                +
+         .%.  -%.:@.  .@:   #- .%%- %:   #-  %=     @.   #=  -% ==  #*- %: %-               +
+          +++-.    -*+:     -.   =.  :++-    -:     =.  .=    =.::   =. =.  .+*+.           +
+                                                                                            +
+                                                                                            +
+                                 +.      :*                                                 +
+                         .    *@@@@#% .#@@@@%*                                              +
+                      +@@@%-*. =##+... .*+*:.::=*%. :                      :*#@= ..         +
+                      .#@@%++=#%@@: - +#%@. - +%@@@@*                      =%@@@@%.         +
+                 *%@@-.+      #@@@@#+ *@@@@%*  :.: .=+%. .                .+-...            +
+                 +@@@%##:#%@@:.-  -*#@- =  *%@@-.= *@@@@@#              =%@@@%%             +
+                        .*@@@%#=  -%@@@@@  +@@@@#*  ---   -             .=++=...            +
+                             :##@* -: -##@# :. -#%@+ -.#@@@%+*       .%@@@=-=               +
+                   -%:       -#@@@%@. -#@@@%%. -%@@@%% -#%%=:=        *@@@#*+ .             +
+                  :@@@+           :#%@: - :=*%. . -##@= :  +#%@. . =*%@. : *@@@=.+          +
+          .#@@@@@@@@@@@@      =@  =%@@@@% +@@@@@= +%@@@@# .*@@@@@-.*@@@@@+ *@@@@##.         +
+         +@@@@@@@@@@@@@@@+. =@@+      .:@. : ..-+%. .  :-@: .  .=##  .  .:@-                +
+          :+#@@@@@@@@@@@@@@@@@@:     -#@@@@#  =%@@@@+ -#@@@@%  +@@@@@- :*@@@@@.             +
+         .#@@@@@@@@@@@@@@@@@@@@*    .#::::  .# :..  .+:....  -- :..  -= .-::  -             +
+          .*@@@@@@@@@@@@@%+-:+@@+ *@@@@%# *@@@@%# =%@@@%% :%@@@@%:.#@@@@@= %@@@%+#          +
+              -@=+*++#%         +..=++:.:+.=++-.::=-+++....:++*... :+++:=- :#%%+-=          +
+               .             =%@@@#@. *@@@@## :%@@@%#=.%@@@--=       -@@@@**-               +
+                           .- -**=.:-+.=+*-.:.-:*+#:.: *@@@#++        =%%#---               +
+                   .=   :%@@@#*=  #@@@%## .%@@@*+* .=+%. :              :+*@* ..            +
+                 #@@@%+# -###-.-.-.+**-.+: =#%%+-= +%@@@@#              :#@@@@@.            +
+                 :#%%+:=...  :%@@@#+=:%@@@*#- .:**  -..                   . ..+             +
+                      -@@@@=*--#%%=.= =%%#-:-.*@@@@@-                      #@@@@%%          +
+                       +@@%=---%%@+ -  =%@@- = =.:                          =**: .          +
+                              *%@@@@%  *@@@@@%                                              +
+                                                                                            +
+                                                                                            +
+                                                                                            +
+                                                                                            +
+            -***#+.   *#***-    :+****:    .#*     *#.    #  .#.  -****. .##***=            +
+          :@-    .@+  @-   %+ :@-          %=#*    %=%=   @  :@: +@.     :@:                +
+          #%      +@  @#*#@=  @+   =***   %+  %*   %= +%. @  :@:  .+##=  :@#***:            +
+          :@=    :@=  @:  :@. :@-    -@  *%...:@=  %=  .%+@  :@:      ## :@:                +
+            :*##*-    *:   =+   .+###*= -*      #. +-    =#  .#. -*##*:  .#####*            +
+
+"""
+
+NEON = "\033[92m"
+RESET = "\033[0m"
+
+clients = []
+lock = threading.Lock()
 
 def gen_cert():
     if os.path.exists(CERT) and os.path.exists(KEY):
         return
     subprocess.run([
-        "openssl","req","-x509","-newkey","rsa:4096",
-        "-keyout",KEY,"-out",CERT,"-days","365","-nodes",
-        "-subj","/CN=secure_cli"
-    ], check=True)
+        "openssl","req","-x509","-newkey","rsa:2048",
+        "-keyout",KEY,"-out",CERT,
+        "-days","3650","-nodes",
+        "-subj","/CN=ttc"
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-def get_public_ip():
+def get_tailscale_ip():
     try:
-        return urllib.request.urlopen("https://api.ipify.org", timeout=5).read().decode()
+        return subprocess.check_output(
+            ["tailscale","ip","-4"],
+            stderr=subprocess.DEVNULL
+        ).decode().strip()
     except:
-        return "unavailable"
-
-def recv_all(s, n):
-    d=b""
-    while len(d)<n:
-        c=s.recv(n-len(d))
-        if not c:
-            return None
-        d+=c
-    return d
+        return None
 
 def broadcast(msg, sender=None):
-    for c in clients:
-        if c != sender:
-            try:
-                c.sendall(msg)
-            except:
-                pass
+    with lock:
+        dead=[]
+        for c in clients:
+            if c!=sender:
+                try: c.sendall(msg)
+                except: dead.append(c)
+        for d in dead:
+            clients.remove(d)
 
 def handle_client(conn, addr):
-    conn.settimeout(60)
 
-    ulen = struct.unpack(">H", recv_all(conn,2))[0]
-    user = recv_all(conn, ulen).decode(errors="ignore")
-
-    plen = struct.unpack(">H", recv_all(conn,2))[0]
-    pw = recv_all(conn, plen).decode(errors="ignore")
-
-    if hash_pw(user, pw) != hash_pw(user, pw):
+    if TAILSCALE_ONLY and not addr[0].startswith("100."):
         conn.close()
         return
 
-    clients.append(conn)
-    join = f"[+] {user} joined".encode()
-    broadcast(b"M"+struct.pack(">I",len(join))+join)
-    print(join.decode())
+    try:
+        conn.send(b"Username: ")
+        user = conn.recv(1024).strip().decode()
 
-    while True:
-        h = recv_all(conn,5)
-        if not h:
-            break
-        t = h[:1]
-        size = struct.unpack(">I",h[1:])[0]
-        data = recv_all(conn,size)
-        if data is None:
-            break
+        conn.send(b"Password: ")
+        pw = conn.recv(1024).strip().decode()
 
-        if t == b"M":
-            msg = f"[{user}] {data.decode(errors='ignore')}".encode()
-            broadcast(b"M"+struct.pack(">I",len(msg))+msg, conn)
-            print(msg.decode())
+        test = hashlib.sha256((SALT + pw).encode()).hexdigest()
 
-        elif t == b"F":
-            nlen = struct.unpack(">H",data[:2])[0]
-            name = os.path.basename(data[2:2+nlen].decode(errors="ignore"))
-            content = data[2+nlen:]
-            pathlib.Path("received").mkdir(exist_ok=True)
-            path = f"received/{user}_{name}"
-            with open(path,"wb") as f:
-                f.write(content)
-            notice = f"[{user}] sent file: {name}".encode()
-            broadcast(b"M"+struct.pack(">I",len(notice))+notice, conn)
-            print(notice.decode())
+        pw = None
 
-    clients.remove(conn)
-    leave = f"[-] {user} left".encode()
-    broadcast(b"M"+struct.pack(">I",len(leave))+leave)
-    print(leave.decode())
-    conn.close()
+        if test != PASSWORD_HASH:
+            conn.close()
+            return
+
+        conn.send(b"OK\n")
+
+        with lock:
+            clients.append(conn)
+
+        broadcast(f"[+] {user} joined\n".encode(), conn)
+
+        while True:
+            data = conn.recv(4096)
+            if not data:
+                break
+
+            if data.startswith(b"/f "):
+                _, name, size = data.split(b" ", 2)
+                size = int(size.decode())
+
+                conn.send(b"READY")
+
+                remaining = size
+                fdata = b""
+                while remaining > 0:
+                    chunk = conn.recv(min(4096, remaining))
+                    if not chunk: break
+                    fdata += chunk
+                    remaining -= len(chunk)
+
+                broadcast(f"[FILE] {user}: {name.decode()} ({size} bytes)\n".encode())
+                broadcast(fdata)
+
+            else:
+                broadcast(f"[{user}] ".encode()+data, conn)
+
+    finally:
+        with lock:
+            if conn in clients:
+                clients.remove(conn)
+        conn.close()
 
 def run_server():
-    print(LOGO)
+    print(SERVER_LOGO)
     gen_cert()
 
     ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     ctx.load_cert_chain(CERT, KEY)
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+    ctx.set_ciphers("ECDHE+AESGCM")
 
-    print("Public IP:", get_public_ip())
+    ip = get_tailscale_ip() or "No Tailscale IP found"
+
+    print("Tailscale IP:", ip)
     print("Port:", PORT)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
     s.bind(("0.0.0.0", PORT))
-
     s.listen(50)
 
-    print(f"Listening on 0.0.0.0:{PORT}")
-    print("Server running...\n")
+    print("Server running (Tailscale only)...\n")
 
     while True:
-        try:
-            c, a = s.accept()
-            c.settimeout(25)
+        c, a = s.accept()
+        c.settimeout(30)
+        sc = ctx.wrap_socket(c, server_side=True)
+        threading.Thread(target=handle_client, args=(sc,a), daemon=True).start()
 
-            sc = ctx.wrap_socket(c, server_side=True)
+def recv_loop(sock):
+    while True:
+        data = sock.recv(4096)
+        if not data:
+            break
+        print(NEON + data.decode(errors="ignore") + RESET, end="")
 
-            threading.Thread(
-                target=handle_client,
-                args=(sc, a),
-                daemon=True
-            ).start()
-
-        except Exception as e:
-            print("Connection error:", e)
-
-
-def run_client(host, use_tor):
-    print(LOGO)
-
-    username = input("Username: ")
-    password = input("Password: ")
-
-    if use_tor:
-        s = socket.socket()
-        s.connect(("127.0.0.1",9050))
-        s.sendall(b"\x05\x01\x00")
-        s.recv(2)
-        h = host.encode()
-        req = b"\x05\x01\x00\x03"+bytes([len(h)])+h+struct.pack(">H",PORT)
-        s.sendall(req)
-        s.recv(10)
-        sock = s
-    else:
-        sock = socket.create_connection((host,PORT))
+def run_client(host):
+    print(CLIENT_LOGO)
 
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
-    s = ctx.wrap_socket(sock)
+    s = socket.create_connection((host, PORT), timeout=20)
+    ss = ctx.wrap_socket(s)
 
-    u = username.encode()
-    p = password.encode()
+    print(NEON + ss.recv(1024).decode() + RESET, end="")
+    ss.send(input().encode()+b"\n")
 
-    s.sendall(struct.pack(">H",len(u)) + u)
-    s.sendall(struct.pack(">H",len(p)) + p)
+    print(NEON + ss.recv(1024).decode() + RESET, end="")
+    ss.send(input().encode()+b"\n")
 
-    def listen():
-        while True:
-            h = recv_all(s,5)
-            if not h:
-                break
-            size = struct.unpack(">I",h[1:])[0]
-            data = recv_all(s,size)
-            if data:
-                print("\n"+data.decode(errors="ignore"))
-
-    threading.Thread(target=listen, daemon=True).start()
-
-    while True:
-        cmd = input("m=msg f=file q=quit > ").lower()
-        if cmd == "q":
-            break
-        if cmd == "m":
-            msg = input("Message: ").encode()
-            s.sendall(b"M"+struct.pack(">I",len(msg))+msg)
-        elif cmd == "f":
-            path = input("File path: ").strip()
-            if not os.path.isfile(path):
-                print("Not found")
-                continue
-            name = os.path.basename(path).encode()
-            content = open(path,"rb").read()
-            payload = struct.pack(">H",len(name))+name+content
-            s.sendall(b"F"+struct.pack(">I",len(payload))+payload)
-
-def main():
-    if len(sys.argv) < 2:
-        print("Server: python secure_cli.py server")
-        print("Client: python secure_cli.py client <host> [--tor]")
+    if not ss.recv(1024).startswith(b"OK"):
+        print("Auth failed")
         return
 
-    if sys.argv[1] == "server":
-        run_server()
-    else:
-        host = sys.argv[2]
-        tor = "--tor" in sys.argv
-        run_client(host, tor)
+    print(NEON + "Connected\n" + RESET)
+
+    threading.Thread(target=recv_loop, args=(ss,), daemon=True).start()
+
+    while True:
+        msg = input(NEON + "> " + RESET)
+
+        if msg.startswith("/s "):
+            path = msg[6:]
+            if os.path.exists(path):
+                size = os.path.getsize(path)
+                name = os.path.basename(path)
+
+                ss.send(f"/f {name} {size}".encode())
+
+                if ss.recv(5) == b"READY":
+                    with open(path,"rb") as f:
+                        ss.sendall(f.read())
+        else:
+            ss.send((msg+"\n").encode())
 
 if __name__ == "__main__":
-    main()
+    if "server" in sys.argv:
+        run_server()
+    elif "client" in sys.argv:
+        run_client(sys.argv[-1])
+    else:
+        print("Use server or client <Tailscale-IP>")
