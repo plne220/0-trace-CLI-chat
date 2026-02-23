@@ -177,16 +177,33 @@ def run_server():
     print("Public IP:", get_public_ip())
     print("Port:", PORT)
 
-    s = socket.socket()
-    s.bind(("0.0.0.0", PORT))
-    s.listen()
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    s.bind(("0.0.0.0", PORT))
+
+    s.listen(50)
+
+    print(f"Listening on 0.0.0.0:{PORT}")
     print("Server running...\n")
 
     while True:
-        c, a = s.accept()
-        sc = ctx.wrap_socket(c, server_side=True)
-        threading.Thread(target=handle_client, args=(sc,a), daemon=True).start()
+        try:
+            c, a = s.accept()
+            c.settimeout(25)
+
+            sc = ctx.wrap_socket(c, server_side=True)
+
+            threading.Thread(
+                target=handle_client,
+                args=(sc, a),
+                daemon=True
+            ).start()
+
+        except Exception as e:
+            print("Connection error:", e)
+
 
 def run_client(host, use_tor):
     print(LOGO)
