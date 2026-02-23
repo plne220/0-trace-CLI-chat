@@ -1,8 +1,11 @@
-rt"
+import socket, ssl, threading, os, subprocess, sys, hashlib
+
+PORT = 5000
+CERT = "server.crt"
 KEY = "server.key"
 
 SALT = "6d477e7f16fc7141bbcda0c2950da171"
-PASSWORD_HASH = "daae92a9a7001e3bb73a8a56c9f868837f9e6f0631cb3a645dea85d494740063" #dont bother cracking ts 
+PASSWORD_HASH = "daae92a9a7001e3bb73a8a56c9f868837f9e6f0631cb3a645dea85d494740063"
 
 TAILSCALE_ONLY = True
 
@@ -308,3 +311,4 @@ if __name__ == "__main__":
         run_client(sys.argv[-1])
     else:
         print("Use server or client <Tailscale-IP>")
+
